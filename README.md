@@ -4,6 +4,11 @@ A Google Tag Manager custom tag template for the [OpenAI ChatGPT Ads measurement
 
 My goal was to make this tag template as simple as possible to use. The same template handles everything from the initial pixel fire to individual conversion events.
 
+<p align="center">
+  <img src="docs/images/order_created-event.png" alt="OpenAI ChatGPT Ads Pixel sample tag configuration in Google Tag Manager" width="640">
+</p>
+<p align="center"><em>The tag configuration UI in Google Tag Manager, showing an order_created event with a Contents data shape.</em></p>
+
 ## Features
 
 - Loads the OpenAI measurement SDK (`oaiq.min.js`) automatically, only once per page
@@ -78,6 +83,12 @@ Event Name: Standard → page_viewed
 Trigger: All Pages
 ```
 
+<p align="center">
+  <img src="docs/images/page_viewed-event.png" alt="OpenAI ChatGPT Ads Pixel page_viewed event configuration in Google Tag Manager" width="640">
+</p>
+<p align="center"><em>The tag configuration UI in Google Tag Manager, showing a page_viewed standard event.</em></p>
+
+
 ### Ecommerce purchase
 
 ```
@@ -124,6 +135,12 @@ Custom Event Name: quote_requested
 Data Shape: Customer Action
 Event ID: quote_{{DLV - quote_id}}
 ```
+
+<p align="center">
+  <img src="docs/images/custom_event_name-event.png" alt="OpenAI ChatGPT Ads Pixel custom_event_name event configuration in Google Tag Manager" width="640">
+</p>
+<p align="center"><em>The tag configuration UI in Google Tag Manager, showing custom_event_name custom event.</em></p>
+
 
 ## Server-side deduplication
 
