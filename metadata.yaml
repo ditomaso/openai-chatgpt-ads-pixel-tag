@@ -1,2 +1,5 @@
 homepage: https://analyticsplaybook.com
 documentation: "https://github.com/ditomaso/openai-chatgpt-ads-pixel-tag"
+versions:
+  - sha: 54876afaad9fa33cfbed406a8afa501deb54c5ed
+    changeNotes: Initial release.
