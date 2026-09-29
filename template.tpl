@@ -37,12 +37,12 @@ ___TEMPLATE_PARAMETERS___
     "name": "pixelId",
     "displayName": "OpenAI Ads Measurement Pixel ID",
     "simpleValueType": true,
+    "help": "Created in the Conversions tab of Ads Manager.",
     "valueValidators": [
       {
         "type": "NON_EMPTY"
       }
-    ],
-    "help": "Created in the Conversions tab of Ads Manager."
+    ]
   },
   {
     "type": "RADIO",
@@ -116,13 +116,15 @@ ___TEMPLATE_PARAMETERS___
         "paramValue": "standard",
         "type": "EQUALS"
       }
-    ]
+    ],
+    "help": "The data shape (contents, customer_action or plan_enrollment) is set automatically from the event."
   },
   {
     "type": "TEXT",
     "name": "customEventName",
     "displayName": "Custom Event Name",
     "simpleValueType": true,
+    "help": "Sent as eventOptions.custom_event_name and converted to lowercase. Use 1\u201364 letters, numbers, underscores or dashes, starting and ending with a letter or number. Can't match a standard event name. Reuse the same name server-side for deduplication.",
     "enablingConditions": [
       {
         "paramName": "eventType",
@@ -140,9 +142,22 @@ ___TEMPLATE_PARAMETERS___
             "type": "EQUALS"
           }
         ]
+      },
+      {
+        "type": "REGEX",
+        "args": [
+          "^([a-zA-Z0-9]([a-zA-Z0-9_-]{0,62}[a-zA-Z0-9])?|.*\\{\\{.+\\}\\}.*)$"
+        ],
+        "errorMessage": "Use 1\u201364 letters, numbers, underscores or dashes, starting and ending with a letter or number.",
+        "enablingConditions": [
+          {
+            "paramName": "eventType",
+            "paramValue": "custom",
+            "type": "EQUALS"
+          }
+        ]
       }
-    ],
-    "help": "Sent as eventOptions.custom_event_name. Use a stable identifier so you can re-use it for browser/server deduplication."
+    ]
   },
   {
     "type": "GROUP",
@@ -151,71 +166,25 @@ ___TEMPLATE_PARAMETERS___
     "groupStyle": "ZIPPY_OPEN",
     "subParams": [
       {
-        "type": "SELECT",
-        "name": "dataShape",
-        "displayName": "Data Shape",
-        "macrosInSelect": false,
-        "selectItems": [
-          {
-            "value": "none",
-            "displayValue": "None"
-          },
-          {
-            "value": "contents",
-            "displayValue": "Contents (products / pages)"
-          },
-          {
-            "value": "customer_action",
-            "displayValue": "Customer Action (leads / registrations)"
-          },
-          {
-            "value": "plan_enrollment",
-            "displayValue": "Plan Enrollment (subscriptions / trials)"
-          }
-        ],
-        "simpleValueType": true,
-        "defaultValue": "none",
-        "help": "Pick the data shape that matches your event. Leave as None to send the event with no payload."
-      },
-      {
         "type": "TEXT",
         "name": "amount",
-        "displayName": "Amount (integer, in smallest currency unit — e.g. cents)",
+        "displayName": "Amount (integer, in smallest currency unit, e.g. cents)",
         "simpleValueType": true,
-        "enablingConditions": [
-          {
-            "paramName": "dataShape",
-            "paramValue": "none",
-            "type": "NOT_EQUALS"
-          }
-        ],
-        "help": "Total value of the event. Must be an integer. For example 2599 \u003d $25.99 USD."
+        "help": "Total value of the event. Must be an integer, for example 2599 \u003d $25.99 USD. Only sent when Currency is also set."
       },
       {
         "type": "TEXT",
         "name": "currency",
         "displayName": "Currency (ISO 4217, e.g. USD)",
         "simpleValueType": true,
-        "enablingConditions": [
-          {
-            "paramName": "dataShape",
-            "paramValue": "none",
-            "type": "NOT_EQUALS"
-          }
-        ]
+        "help": "Required when Amount is set."
       },
       {
         "type": "TEXT",
         "name": "planId",
         "displayName": "Plan ID",
         "simpleValueType": true,
-        "enablingConditions": [
-          {
-            "paramName": "dataShape",
-            "paramValue": "plan_enrollment",
-            "type": "EQUALS"
-          }
-        ]
+        "help": "Your internal plan identifier. Used by subscription_created, trial_started and custom events; ignored for other events."
       },
       {
         "type": "SIMPLE_TABLE",
@@ -238,17 +207,7 @@ ___TEMPLATE_PARAMETERS___
             "defaultValue": "product",
             "displayName": "content_type",
             "name": "content_type",
-            "type": "SELECT",
-            "selectItems": [
-              {
-                "value": "product",
-                "displayValue": "product"
-              },
-              {
-                "value": "page",
-                "displayValue": "page"
-              }
-            ]
+            "type": "TEXT"
           },
           {
             "defaultValue": "",
@@ -269,14 +228,118 @@ ___TEMPLATE_PARAMETERS___
             "type": "TEXT"
           }
         ],
-        "enablingConditions": [
+        "help": "One row per item. content_type is any category, such as product, plan or page. Quantity and amount must be integers. An item amount needs an item or event currency. Ignored for lead_created, registration_completed and appointment_scheduled."
+      }
+    ]
+  },
+  {
+    "type": "GROUP",
+    "name": "userDataGroup",
+    "displayName": "User Data (optional)",
+    "groupStyle": "ZIPPY_CLOSED",
+    "help": "Sent in the init call to improve conversion matching. Identifiers are normalized and SHA-256 hashed in the browser before they are sent. Leave blank any fields you don\u2019t have.",
+    "subParams": [
+      {
+        "type": "CHECKBOX",
+        "name": "userDataHashed",
+        "checkboxText": "Email, phone, external ID and names are already SHA-256 hashed",
+        "simpleValueType": true,
+        "help": "Tick this if your variables already return lowercase hex SHA-256 digests. Otherwise the template normalizes and hashes the raw values."
+      },
+      {
+        "type": "TEXT",
+        "name": "userEmail",
+        "displayName": "Email",
+        "simpleValueType": true
+      },
+      {
+        "type": "TEXT",
+        "name": "userPhone",
+        "displayName": "Phone number",
+        "simpleValueType": true,
+        "help": "Include the country calling code, e.g. +1 (415) 555-2671."
+      },
+      {
+        "type": "TEXT",
+        "name": "userExternalId",
+        "displayName": "External ID",
+        "simpleValueType": true,
+        "help": "A stable, pseudonymous customer ID from your system."
+      },
+      {
+        "type": "TEXT",
+        "name": "userFirstName",
+        "displayName": "First name",
+        "simpleValueType": true
+      },
+      {
+        "type": "TEXT",
+        "name": "userLastName",
+        "displayName": "Last name",
+        "simpleValueType": true
+      },
+      {
+        "type": "TEXT",
+        "name": "userCountry",
+        "displayName": "Country",
+        "simpleValueType": true,
+        "help": "Two-letter ISO 3166-1 code, e.g. CA. Not hashed."
+      },
+      {
+        "type": "TEXT",
+        "name": "userCity",
+        "displayName": "City",
+        "simpleValueType": true,
+        "help": "Max 128 characters. Not hashed."
+      },
+      {
+        "type": "TEXT",
+        "name": "userRegion",
+        "displayName": "State, province or region",
+        "simpleValueType": true,
+        "help": "Max 128 characters. Not hashed."
+      },
+      {
+        "type": "TEXT",
+        "name": "userPostalCode",
+        "displayName": "Postal or ZIP code",
+        "simpleValueType": true,
+        "help": "Max 32 characters. Not hashed."
+      }
+    ]
+  },
+  {
+    "type": "GROUP",
+    "name": "consentGroup",
+    "displayName": "Consent",
+    "groupStyle": "ZIPPY_CLOSED",
+    "subParams": [
+      {
+        "type": "SELECT",
+        "name": "consentMode",
+        "displayName": "Measurement consent",
+        "macrosInSelect": true,
+        "selectItems": [
           {
-            "paramName": "dataShape",
-            "paramValue": "contents",
-            "type": "EQUALS"
+            "value": "none",
+            "displayValue": "Don\u2019t set (Pixel default: granted)"
+          },
+          {
+            "value": "gcm",
+            "displayValue": "Follow Google Consent Mode (ad_storage)"
+          },
+          {
+            "value": "granted",
+            "displayValue": "Granted"
+          },
+          {
+            "value": "denied",
+            "displayValue": "Denied"
           }
         ],
-        "help": "One row per product or page. Quantity and amount must be integers."
+        "simpleValueType": true,
+        "defaultValue": "none",
+        "help": "Calls oaiq(\"consent\", ...) before init. When consent is denied the Pixel sends no events and removes its cookies. You can also pick a variable that returns true/false or granted/denied. With Google Consent Mode, the Pixel is switched to granted as soon as ad_storage is granted. Events blocked while denied are not replayed."
       }
     ]
   },
@@ -291,7 +354,14 @@ ___TEMPLATE_PARAMETERS___
         "name": "eventId",
         "displayName": "Event ID",
         "simpleValueType": true,
-        "help": "Optional. Sent as eventOptions.event_id. Use the same ID on the server-side call to deduplicate the conversion. If omitted, the SDK auto-generates one."
+        "help": "Optional. Sent as eventOptions.event_id. Use the same ID as the Conversions API event id to deduplicate the conversion."
+      },
+      {
+        "type": "CHECKBOX",
+        "name": "optOut",
+        "checkboxText": "Opt this event out of user-level personalization",
+        "simpleValueType": true,
+        "help": "Sends eventOptions.opt_out \u003d true. OpenAI says it doesn\u2019t currently use Pixel data for user-level personalization, but will respect this flag if that changes."
       },
       {
         "type": "CHECKBOX",
@@ -307,77 +377,306 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
+const addConsentListener = require('addConsentListener');
 const copyFromWindow = require('copyFromWindow');
 const createArgumentsQueue = require('createArgumentsQueue');
 const injectScript = require('injectScript');
-const makeNumber = require('makeNumber');
+const isConsentGranted = require('isConsentGranted');
 const logToConsole = require('logToConsole');
+const makeNumber = require('makeNumber');
+const makeString = require('makeString');
+const sha256 = require('sha256');
+const templateStorage = require('templateStorage');
 
 const SDK_URL = 'https://bzrcdn.openai.com/sdk/oaiq.min.js';
+const LOG_PREFIX = 'OpenAI ChatGPT Ads Pixel: ';
+
+// Each standard event has one data shape. The event data `type` must match it.
+const EVENT_SHAPES = {
+  page_viewed: 'contents',
+  contents_viewed: 'contents',
+  items_added: 'contents',
+  checkout_started: 'contents',
+  order_created: 'contents',
+  appointment_scheduled: 'customer_action',
+  lead_created: 'customer_action',
+  registration_completed: 'customer_action',
+  subscription_created: 'plan_enrollment',
+  trial_started: 'plan_enrollment'
+};
+
+// Names a custom event can't use: every standard event, plus the
+// Conversions API only events and the literal "custom".
+const RESERVED_EVENT_NAMES = {
+  custom: true,
+  app_installed: true,
+  app_opened: true
+};
+
+const DIGITS = '0123456789';
+const LOWER_ALNUM = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const NAME_STRIP_CHARS = ' \t\n\r!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+
+function isSet(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function clean(value) {
+  return makeString(value).trim();
+}
+
+function fail(message) {
+  logToConsole(LOG_PREFIX + message);
+  data.gtmOnFailure();
+}
+
+// Custom event names: 1-64 characters, letters, numbers, underscores or
+// dashes, starting and ending with a letter or number, not a standard name.
+function isValidCustomEventName(name) {
+  if (name.length < 1 || name.length > 64) return false;
+  for (let i = 0; i < name.length; i++) {
+    const c = name.charAt(i);
+    const isEdge = i === 0 || i === name.length - 1;
+    const isAlnum = LOWER_ALNUM.indexOf(c) !== -1;
+    if (!isAlnum && (isEdge || (c !== '_' && c !== '-'))) return false;
+  }
+  return !RESERVED_EVENT_NAMES[name] && !EVENT_SHAPES[name];
+}
+
+// Returns true, false, or undefined (leave the Pixel's default alone).
+function resolveConsent() {
+  const mode = data.consentMode;
+  if (mode === 'gcm') return isConsentGranted('ad_storage');
+  if (mode === true || mode === 'true' || mode === 'granted') return true;
+  if (mode === false || mode === 'false' || mode === 'denied') return false;
+  return undefined;
+}
 
 // On the first tag fire, create the oaiq command queue and inject the SDK.
-// On subsequent fires, oaiq already exists (as either the queue stub or the
+// On later fires, oaiq already exists (as either the queue stub or the
 // SDK's replacement function), so we skip both.
-let oaiq = copyFromWindow('oaiq');
-if (typeof oaiq !== 'function') {
-  oaiq = createArgumentsQueue('oaiq', 'oaiq.q');
-  injectScript(
-    SDK_URL,
-    function () {},
-    function () {
-      logToConsole('OpenAI ChatGPT Ads Pixel: failed to load SDK from ' + SDK_URL);
-    },
-    'oaiq_sdk'
-  );
+function getOaiq() {
+  let oaiq = copyFromWindow('oaiq');
+  if (typeof oaiq !== 'function') {
+    oaiq = createArgumentsQueue('oaiq', 'oaiq.q');
+    injectScript(
+      SDK_URL,
+      function () {},
+      function () {
+        logToConsole(LOG_PREFIX + 'failed to load SDK from ' + SDK_URL);
+      },
+      'oaiq_sdk'
+    );
+  }
+  return oaiq;
 }
 
-// Always call init. The SDK treats repeat init for the same pixelId as a
-// no-op, so a single tag fire can both initialize and send an event without
-// requiring a separate init / page view tag.
-const initProps = { pixelId: data.pixelId };
-if (data.debug) initProps.debug = true;
-oaiq('init', initProps);
-
-// Resolve the event name and options.
-const eventOptions = {};
-let eventName;
-if (data.eventType === 'custom') {
-  eventName = 'custom';
-  eventOptions.custom_event_name = data.customEventName;
-} else {
-  eventName = data.standardEvent;
+// Normalization rules from the OpenAI Measurement Pixel docs ("Send user data").
+function normalizeEmail(value) {
+  return value.toLowerCase();
 }
-if (data.eventId) eventOptions.event_id = data.eventId;
 
-// Build event properties based on the chosen data shape.
-const eventProps = {};
-const shape = data.dataShape;
-if (shape && shape !== 'none') {
-  eventProps.type = shape;
-  if (data.amount) eventProps.amount = makeNumber(data.amount);
-  if (data.currency) eventProps.currency = data.currency;
+function normalizePhone(value) {
+  let digits = '';
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charAt(i);
+    if (DIGITS.indexOf(c) !== -1) digits += c;
+  }
+  let start = 0;
+  while (start < digits.length && digits.charAt(start) === '0') start++;
+  digits = digits.substring(start);
+  return digits.length >= 8 && digits.length <= 15 ? digits : '';
+}
 
-  if (shape === 'plan_enrollment' && data.planId) {
-    eventProps.plan_id = data.planId;
-  } else if (shape === 'contents' && data.contents && data.contents.length) {
-    const items = [];
-    for (let i = 0; i < data.contents.length; i++) {
-      const row = data.contents[i];
-      const item = {};
-      if (row.id) item.id = row.id;
-      if (row.name) item.name = row.name;
-      if (row.content_type) item.content_type = row.content_type;
-      if (row.quantity) item.quantity = makeNumber(row.quantity);
-      if (row.amount) item.amount = makeNumber(row.amount);
-      if (row.currency) item.currency = row.currency;
-      items.push(item);
+function normalizeName(value) {
+  const lower = value.toLowerCase();
+  let result = '';
+  for (let i = 0; i < lower.length; i++) {
+    const c = lower.charAt(i);
+    if (NAME_STRIP_CHARS.indexOf(c) === -1) result += c;
+  }
+  return result;
+}
+
+function identity(value) {
+  return value;
+}
+
+const HASHED_FIELDS = [
+  { param: 'userEmail', key: 'email_sha256', normalize: normalizeEmail },
+  { param: 'userPhone', key: 'phone_number_sha256', normalize: normalizePhone },
+  { param: 'userExternalId', key: 'external_id_sha256', normalize: identity },
+  { param: 'userFirstName', key: 'first_name_sha256', normalize: normalizeName },
+  { param: 'userLastName', key: 'last_name_sha256', normalize: normalizeName }
+];
+
+// Builds the `user` object for init. Plain fields are set straight away;
+// identifiers are hashed with SHA-256 (async), then onReady is called.
+function buildUser(onReady) {
+  const user = {};
+  let hasUser = false;
+
+  if (isSet(data.userCountry)) {
+    user.country = clean(data.userCountry).toUpperCase();
+    hasUser = true;
+  }
+  if (isSet(data.userCity)) {
+    user.city = clean(data.userCity).substring(0, 128);
+    hasUser = true;
+  }
+  if (isSet(data.userRegion)) {
+    user.region = clean(data.userRegion).substring(0, 128);
+    hasUser = true;
+  }
+  if (isSet(data.userPostalCode)) {
+    user.postal_code = clean(data.userPostalCode).substring(0, 32);
+    hasUser = true;
+  }
+
+  const toHash = [];
+  for (let i = 0; i < HASHED_FIELDS.length; i++) {
+    const field = HASHED_FIELDS[i];
+    const value = isSet(data[field.param]) ? clean(data[field.param]) : '';
+    if (!value) {
+      // Nothing entered for this field.
+    } else if (data.userDataHashed) {
+      // Already a SHA-256 hex digest; the docs require lowercase hex.
+      user[field.key] = value.toLowerCase();
+      hasUser = true;
+    } else {
+      const normalized = field.normalize(value);
+      if (normalized) toHash.push({ key: field.key, value: normalized });
+      else logToConsole(LOG_PREFIX + 'skipped ' + field.param + ', value is empty or invalid after normalization');
     }
-    eventProps.contents = items;
+  }
+
+  if (!toHash.length) {
+    onReady(hasUser ? user : undefined);
+    return;
+  }
+
+  let pending = toHash.length;
+  const done = function () {
+    pending--;
+    if (pending === 0) onReady(user);
+  };
+  for (let i = 0; i < toHash.length; i++) {
+    hashInto(user, toHash[i].key, toHash[i].value, done);
   }
 }
 
-oaiq('measure', eventName, eventProps, eventOptions);
-data.gtmOnSuccess();
+function hashInto(user, key, value, done) {
+  sha256(
+    value,
+    function (digest) {
+      user[key] = digest;
+      done();
+    },
+    function () {
+      logToConsole(LOG_PREFIX + 'failed to hash ' + key + ', field not sent');
+      done();
+    },
+    { outputEncoding: 'hex' }
+  );
+}
+
+function buildContents(eventCurrency) {
+  const items = [];
+  for (let i = 0; i < data.contents.length; i++) {
+    const row = data.contents[i];
+    const item = {};
+    if (isSet(row.id)) item.id = makeString(row.id);
+    if (isSet(row.name)) item.name = makeString(row.name);
+    if (isSet(row.content_type)) item.content_type = clean(row.content_type);
+    if (isSet(row.quantity)) item.quantity = makeNumber(row.quantity);
+    if (isSet(row.currency)) item.currency = clean(row.currency).toUpperCase();
+    if (isSet(row.amount)) {
+      if (item.currency || eventCurrency) {
+        item.amount = makeNumber(row.amount);
+      } else {
+        logToConsole(LOG_PREFIX + 'contents row ' + (i + 1) + ' amount not sent, a currency is required with an amount');
+      }
+    }
+    items.push(item);
+  }
+  return items;
+}
+
+function main() {
+  // Resolve the event name, data shape and options.
+  const eventOptions = {};
+  let eventName;
+  let shape;
+  if (data.eventType === 'custom') {
+    const customName = isSet(data.customEventName) ? clean(data.customEventName).toLowerCase() : '';
+    if (!isValidCustomEventName(customName)) {
+      fail('invalid custom event name "' + customName + '". Use 1-64 letters, numbers, underscores or dashes, start and end with a letter or number, and don\'t reuse a standard event name.');
+      return;
+    }
+    eventName = 'custom';
+    shape = 'custom';
+    eventOptions.custom_event_name = customName;
+  } else {
+    eventName = data.standardEvent;
+    shape = EVENT_SHAPES[eventName];
+    if (!shape) {
+      fail('unsupported standard event "' + eventName + '"');
+      return;
+    }
+  }
+  if (isSet(data.eventId)) eventOptions.event_id = makeString(data.eventId);
+  if (data.optOut) eventOptions.opt_out = true;
+
+  // Build the event data. Every shape takes amount and currency; an amount
+  // is only valid with a currency.
+  const eventData = { type: shape };
+  const currency = isSet(data.currency) ? clean(data.currency).toUpperCase() : '';
+  if (currency) eventData.currency = currency;
+  if (isSet(data.amount)) {
+    if (currency) {
+      eventData.amount = makeNumber(data.amount);
+    } else {
+      logToConsole(LOG_PREFIX + 'amount not sent, a currency is required with an amount');
+    }
+  }
+  if ((shape === 'plan_enrollment' || shape === 'custom') && isSet(data.planId)) {
+    eventData.plan_id = makeString(data.planId);
+  }
+  if (shape !== 'customer_action' && data.contents && data.contents.length) {
+    eventData.contents = buildContents(currency);
+  }
+
+  // Consent must be set before init, so send it before anything else.
+  const consent = resolveConsent();
+  if (consent !== undefined) getOaiq()('consent', consent);
+
+  // With Google Consent Mode, grant Pixel consent as soon as ad_storage is
+  // granted, without waiting for the next tag fire. Register once per page.
+  if (data.consentMode === 'gcm' && !consent && !templateStorage.getItem('oaiq_consent_listener')) {
+    templateStorage.setItem('oaiq_consent_listener', true);
+    addConsentListener('ad_storage', function (consentType, granted) {
+      if (granted) getOaiq()('consent', true);
+    });
+  }
+
+  buildUser(function (user) {
+    // Always call init. The SDK treats repeat init for the same pixelId as
+    // an update, so a single tag fire can both initialize and send an event
+    // without a separate init / page view tag.
+    const oaiq = getOaiq();
+    const initProps = { pixelId: data.pixelId };
+    if (user) initProps.user = user;
+    if (data.debug) initProps.debug = true;
+    oaiq('init', initProps);
+
+    // measureSingle sends only to this tag's Pixel ID. Plain measure would
+    // also send to any other Pixel ID initialized on the page.
+    oaiq('measureSingle', data.pixelId, eventName, eventData, eventOptions);
+    data.gtmOnSuccess();
+  });
+}
+
+main();
 
 
 ___WEB_PERMISSIONS___
@@ -529,6 +828,59 @@ ___WEB_PERMISSIONS___
       "isEditedByUser": true
     },
     "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "access_consent",
+        "versionId": "1"
+      },
+      "param": [
+        {
+          "key": "consentTypes",
+          "value": {
+            "type": 2,
+            "listItem": [
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "consentType"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "ad_storage"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
   }
 ]
 
@@ -536,82 +888,15 @@ ___WEB_PERMISSIONS___
 ___TESTS___
 
 scenarios:
-- name: Fires init and page_viewed on a standard event tag
-  code: |2-
-        const mockData = {
-          pixelId: 'TEST_PIXEL_123',
-          eventType: 'standard',
-          standardEvent: 'page_viewed',
-          dataShape: 'none'
-        };
-
-        const oaiqCalls = [];
-        const windowState = {};
-        let injectedUrl;
-        let injectedCacheKey;
-
-        mock('copyFromWindow', function (key) {
-          return windowState[key];
-        });
-        mock('setInWindow', function (key, value) {
-          windowState[key] = value;
-          return true;
-        });
-        mock('createArgumentsQueue', function (fnName) {
-          const fn = function () {
-            const args = [];
-            for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
-            oaiqCalls.push(args);
-          };
-          windowState[fnName] = fn;
-          return fn;
-        });
-        mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
-          injectedUrl = url;
-          injectedCacheKey = cacheKey;
-          onSuccess();
-        });
-        mock('makeNumber', function (v) { return v * 1; });
-        mock('logToConsole', function () {});
-
-        runCode(mockData);
-
-        assertApi('gtmOnSuccess').wasCalled();
-        assertApi('gtmOnFailure').wasNotCalled();
-        assertApi('injectScript').wasCalled();
-        assertThat(injectedUrl).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
-        assertThat(injectedCacheKey).isEqualTo('oaiq_sdk');
-
-        // Two oaiq calls expected: init + measure
-        assertThat(oaiqCalls.length).isEqualTo(2);
-        assertThat(oaiqCalls[0][0]).isEqualTo('init');
-        assertThat(oaiqCalls[0][1]).isEqualTo({ pixelId: 'TEST_PIXEL_123' });
-        assertThat(oaiqCalls[1][0]).isEqualTo('measure');
-        assertThat(oaiqCalls[1][1]).isEqualTo('page_viewed');
-        assertThat(oaiqCalls[1][2]).isEqualTo({});
-        assertThat(oaiqCalls[1][3]).isEqualTo({});
-- name: Sends order_created with full contents payload
+- name: Fires init and page_viewed with the contents type
   code: |-
-    const mockData = {
-      pixelId: 'PXL',
-      eventType: 'standard',
-      standardEvent: 'order_created',
-      dataShape: 'contents',
-      amount: '2599',
-      currency: 'USD',
-      contents: [
-        { id: 'sku-1', name: 'Shirt', content_type: 'product', quantity: '1', amount: '1999', currency: 'USD' },
-        { id: 'sku-2', name: 'Hat', content_type: 'product', quantity: '2', amount: '300', currency: 'USD' }
-      ],
-      eventId: 'order_abc123'
-    };
-
     const oaiqCalls = [];
     const windowState = {};
+    let injectCount = 0;
 
     mock('copyFromWindow', function (key) { return windowState[key]; });
-    mock('setInWindow', function (key, value) { windowState[key] = value; return true; });
     mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
       const fn = function () {
         const args = [];
         for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
@@ -620,16 +905,79 @@ scenarios:
       windowState[fnName] = fn;
       return fn;
     });
-    mock('injectScript', function (u, ok) { ok(); });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
     mock('makeNumber', function (v) { return v * 1; });
     mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
 
-    runCode(mockData);
+    runCode({
+      pixelId: 'TEST_PIXEL_123',
+      eventType: 'standard',
+      standardEvent: 'page_viewed'
+    });
 
     assertApi('gtmOnSuccess').wasCalled();
-    assertThat(oaiqCalls[1][0]).isEqualTo('measure');
-    assertThat(oaiqCalls[1][1]).isEqualTo('order_created');
-    assertThat(oaiqCalls[1][2]).isEqualTo({
+    assertApi('gtmOnFailure').wasNotCalled();
+    assertThat(injectCount).isEqualTo(1);
+
+    // Two oaiq calls expected: init + measureSingle
+    assertThat(oaiqCalls.length).isEqualTo(2);
+    assertThat(oaiqCalls[0]).isEqualTo(['init', { pixelId: 'TEST_PIXEL_123' }]);
+    assertThat(oaiqCalls[1]).isEqualTo(['measureSingle', 'TEST_PIXEL_123', 'page_viewed', { type: 'contents' }, {}]);
+- name: Sends order_created with full contents payload
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'standard',
+      standardEvent: 'order_created',
+      amount: '2599',
+      currency: 'usd',
+      contents: [
+        { id: 'sku-1', name: 'Shirt', content_type: 'product', quantity: '1', amount: '1999', currency: 'USD' },
+        { id: 'sku-2', name: 'Hat', content_type: 'product', quantity: '2', amount: '300', currency: 'USD' }
+      ],
+      eventId: 'order_abc123'
+    });
+
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(oaiqCalls[1][0]).isEqualTo('measureSingle');
+    assertThat(oaiqCalls[1][1]).isEqualTo('PXL');
+    assertThat(oaiqCalls[1][2]).isEqualTo('order_created');
+    assertThat(oaiqCalls[1][3]).isEqualTo({
       type: 'contents',
       amount: 2599,
       currency: 'USD',
@@ -638,106 +986,278 @@ scenarios:
         { id: 'sku-2', name: 'Hat', content_type: 'product', quantity: 2, amount: 300, currency: 'USD' }
       ]
     });
-    assertThat(oaiqCalls[1][3]).isEqualTo({ event_id: 'order_abc123' });
-- name: Sends a custom event with custom_event_name and event_id
-  code: |2-
-        const mockData = {
-          pixelId: 'PXL',
-          eventType: 'custom',
-          customEventName: 'quote_requested',
-          dataShape: 'customer_action',
-          amount: '0',
-          currency: 'CAD',
-          eventId: 'quote_req_42'
-        };
-
-        const oaiqCalls = [];
-        const windowState = {};
-
-        mock('copyFromWindow', function (key) { return windowState[key]; });
-        mock('setInWindow', function (key, value) { windowState[key] = value; return true; });
-        mock('createArgumentsQueue', function (fnName) {
-          const fn = function () {
-            const args = [];
-            for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
-            oaiqCalls.push(args);
-          };
-          windowState[fnName] = fn;
-          return fn;
-        });
-        mock('injectScript', function (u, ok) { ok(); });
-        mock('makeNumber', function (v) { return v * 1; });
-        mock('logToConsole', function () {});
-
-        runCode(mockData);
-
-        assertApi('gtmOnSuccess').wasCalled();
-        assertThat(oaiqCalls[1][0]).isEqualTo('measure');
-        assertThat(oaiqCalls[1][1]).isEqualTo('custom');
-        assertThat(oaiqCalls[1][2]).isEqualTo({
-          type: 'customer_action',
-          amount: 0,
-          currency: 'CAD'
-        });
-        assertThat(oaiqCalls[1][3]).isEqualTo({
-          custom_event_name: 'quote_requested',
-          event_id: 'quote_req_42'
-        });
-- name: Sends a plan_enrollment event with plan_id
+    assertThat(oaiqCalls[1][4]).isEqualTo({ event_id: 'order_abc123' });
+- name: Sends a custom event with the custom type, plan_id and contents
   code: |-
-    const mockData = {
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'custom',
+      customEventName: ' Quote_Requested ',
+      amount: '0',
+      currency: 'CAD',
+      planId: 'enterprise',
+      contents: [{ id: 'svc-1', content_type: 'service', quantity: '1' }],
+      eventId: 'quote_req_42'
+    });
+
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(oaiqCalls[1][2]).isEqualTo('custom');
+    assertThat(oaiqCalls[1][3]).isEqualTo({
+      type: 'custom',
+      amount: 0,
+      currency: 'CAD',
+      plan_id: 'enterprise',
+      contents: [{ id: 'svc-1', content_type: 'service', quantity: 1 }]
+    });
+    assertThat(oaiqCalls[1][4]).isEqualTo({
+      custom_event_name: 'quote_requested',
+      event_id: 'quote_req_42'
+    });
+- name: Rejects invalid custom event names
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    const badNames = ['order_created', 'custom', 'app_opened', '_leading', 'trailing-', 'has space', ''];
+    for (let i = 0; i < badNames.length; i++) {
+      runCode({ pixelId: 'PXL', eventType: 'custom', customEventName: badNames[i] });
+    }
+
+    assertApi('gtmOnFailure').wasCalled();
+    assertApi('gtmOnSuccess').wasNotCalled();
+    assertThat(oaiqCalls.length).isEqualTo(0);
+- name: Sends plan_enrollment with plan_id and contents
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
       pixelId: 'PXL',
       eventType: 'standard',
       standardEvent: 'subscription_created',
-      dataShape: 'plan_enrollment',
       amount: '1499',
       currency: 'USD',
-      planId: 'pro_monthly'
-    };
-
-    const oaiqCalls = [];
-    const windowState = {};
-
-    mock('copyFromWindow', function (key) { return windowState[key]; });
-    mock('setInWindow', function (key, value) { windowState[key] = value; return true; });
-    mock('createArgumentsQueue', function (fnName) {
-      const fn = function () {
-        const args = [];
-        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
-        oaiqCalls.push(args);
-      };
-      windowState[fnName] = fn;
-      return fn;
+      planId: 'pro_monthly',
+      contents: [{ id: 'pro', content_type: 'plan', quantity: '1' }]
     });
-    mock('injectScript', function (u, ok) { ok(); });
-    mock('makeNumber', function (v) { return v * 1; });
-    mock('logToConsole', function () {});
-
-    runCode(mockData);
 
     assertApi('gtmOnSuccess').wasCalled();
-    assertThat(oaiqCalls[1][2]).isEqualTo({
+    assertThat(oaiqCalls[1][3]).isEqualTo({
       type: 'plan_enrollment',
       amount: 1499,
       currency: 'USD',
-      plan_id: 'pro_monthly'
+      plan_id: 'pro_monthly',
+      contents: [{ id: 'pro', content_type: 'plan', quantity: 1 }]
     });
-- name: Passes debug flag to init when enabled
+- name: Sends customer_action without plan_id or contents
   code: |-
-    const mockData = {
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'standard',
+      standardEvent: 'lead_created',
+      planId: 'ignored',
+      contents: [{ id: 'ignored' }]
+    });
+
+    assertThat(oaiqCalls[1][3]).isEqualTo({ type: 'customer_action' });
+- name: Drops amounts that have no currency
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'standard',
+      standardEvent: 'items_added',
+      amount: '2599',
+      contents: [
+        { id: 'a', quantity: '0', amount: '100' },
+        { id: 'b', amount: '200', currency: 'USD' }
+      ]
+    });
+
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(oaiqCalls[1][3]).isEqualTo({
+      type: 'contents',
+      contents: [
+        { id: 'a', quantity: 0 },
+        { id: 'b', amount: 200, currency: 'USD' }
+      ]
+    });
+- name: Passes debug and opt_out when enabled
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
       pixelId: 'PXL',
       eventType: 'standard',
       standardEvent: 'page_viewed',
-      dataShape: 'none',
-      debug: true
-    };
+      debug: true,
+      optOut: true
+    });
 
+    assertThat(oaiqCalls[0]).isEqualTo(['init', { pixelId: 'PXL', debug: true }]);
+    assertThat(oaiqCalls[1][4]).isEqualTo({ opt_out: true });
+- name: Injects the SDK only once when fired multiple times
+  code: |-
     const oaiqCalls = [];
     const windowState = {};
+    let injectCount = 0;
 
     mock('copyFromWindow', function (key) { return windowState[key]; });
-    mock('setInWindow', function (key, value) { windowState[key] = value; return true; });
     mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
       const fn = function () {
         const args = [];
         for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
@@ -746,131 +1266,337 @@ scenarios:
       windowState[fnName] = fn;
       return fn;
     });
-    mock('injectScript', function (u, ok) { ok(); });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
     mock('makeNumber', function (v) { return v * 1; });
     mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
 
-    runCode(mockData);
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'page_viewed' });
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'order_created' });
 
+    assertThat(injectCount).isEqualTo(1);
+    assertApi('gtmOnSuccess').wasCalled();
+
+    // Init is called on every fire, plus one measureSingle per fire => 4 calls.
+    assertThat(oaiqCalls.length).isEqualTo(4);
     assertThat(oaiqCalls[0][0]).isEqualTo('init');
-    assertThat(oaiqCalls[0][1]).isEqualTo({ pixelId: 'PXL', debug: true });
-- name: Injects the SDK only once when fired multiple times
-  code: |2-
-        const oaiqCalls = [];
-        const windowState = {};
-        let injectCount = 0;
+    assertThat(oaiqCalls[1][2]).isEqualTo('page_viewed');
+    assertThat(oaiqCalls[2][0]).isEqualTo('init');
+    assertThat(oaiqCalls[3][2]).isEqualTo('order_created');
+- name: Sends each tag only to its own Pixel ID
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
 
-        mock('copyFromWindow', function (key) { return windowState[key]; });
-        mock('setInWindow', function (key, value) { windowState[key] = value; return true; });
-        mock('createArgumentsQueue', function (fnName) {
-          // Reuse an existing queue function if already created.
-          if (windowState[fnName]) return windowState[fnName];
-          const fn = function () {
-            const args = [];
-            for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
-            oaiqCalls.push(args);
-          };
-          windowState[fnName] = fn;
-          return fn;
-        });
-        mock('injectScript', function (u, ok) { injectCount++; ok(); });
-        mock('makeNumber', function (v) { return v * 1; });
-        mock('logToConsole', function () {});
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
 
-        runCode({
-          pixelId: 'PXL',
-          eventType: 'standard',
-          standardEvent: 'page_viewed',
-          dataShape: 'none'
-        });
-        runCode({
-          pixelId: 'PXL',
-          eventType: 'standard',
-          standardEvent: 'order_created',
-          dataShape: 'none'
-        });
+    runCode({ pixelId: 'PIXEL_A', eventType: 'standard', standardEvent: 'page_viewed' });
+    runCode({ pixelId: 'PIXEL_B', eventType: 'standard', standardEvent: 'order_created' });
 
-        // SDK should only have been injected on the first fire.
-        assertThat(injectCount).isEqualTo(1);
-        assertApi('gtmOnSuccess').wasCalled();
-
-        // Init is called on every fire, plus one measure per fire => 4 oaiq calls total.
-        assertThat(oaiqCalls.length).isEqualTo(4);
-        assertThat(oaiqCalls[0][0]).isEqualTo('init');
-        assertThat(oaiqCalls[1][1]).isEqualTo('page_viewed');
-        assertThat(oaiqCalls[2][0]).isEqualTo('init');
-        assertThat(oaiqCalls[3][1]).isEqualTo('order_created');
+    assertThat(oaiqCalls[1][0]).isEqualTo('measureSingle');
+    assertThat(oaiqCalls[1][1]).isEqualTo('PIXEL_A');
+    assertThat(oaiqCalls[3][0]).isEqualTo('measureSingle');
+    assertThat(oaiqCalls[3][1]).isEqualTo('PIXEL_B');
 - name: Omits contents array when no rows are provided
   code: |-
-    const mockData = {
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
       pixelId: 'PXL',
       eventType: 'standard',
       standardEvent: 'contents_viewed',
-      dataShape: 'contents',
       amount: '500',
       currency: 'USD',
       contents: []
-    };
-
-    const oaiqCalls = [];
-    const windowState = {};
-
-    mock('copyFromWindow', function (key) { return windowState[key]; });
-    mock('setInWindow', function (key, value) { windowState[key] = value; return true; });
-    mock('createArgumentsQueue', function (fnName) {
-      const fn = function () {
-        const args = [];
-        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
-        oaiqCalls.push(args);
-      };
-      windowState[fnName] = fn;
-      return fn;
     });
-    mock('injectScript', function (u, ok) { ok(); });
-    mock('makeNumber', function (v) { return v * 1; });
-    mock('logToConsole', function () {});
 
-    runCode(mockData);
-
-    assertThat(oaiqCalls[1][2]).isEqualTo({
+    assertThat(oaiqCalls[1][3]).isEqualTo({
       type: 'contents',
       amount: 500,
       currency: 'USD'
     });
+- name: Sets consent before init
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'page_viewed', consentMode: 'denied' });
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'page_viewed', consentMode: true });
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'page_viewed', consentMode: 'none' });
+
+    assertThat(oaiqCalls[0]).isEqualTo(['consent', false]);
+    assertThat(oaiqCalls[1][0]).isEqualTo('init');
+    assertThat(oaiqCalls[3]).isEqualTo(['consent', true]);
+    assertThat(oaiqCalls[4][0]).isEqualTo('init');
+    // consentMode 'none' sends no consent call.
+    assertThat(oaiqCalls[6][0]).isEqualTo('init');
+    assertThat(oaiqCalls.length).isEqualTo(8);
+- name: Follows Google Consent Mode and grants on update
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    let listener;
+    let listenerCount = 0;
+    mock('isConsentGranted', function (type) {
+      assertThat(type).isEqualTo('ad_storage');
+      return false;
+    });
+    mock('addConsentListener', function (type, fn) {
+      listenerCount++;
+      listener = fn;
+    });
+
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'page_viewed', consentMode: 'gcm' });
+    runCode({ pixelId: 'PXL', eventType: 'standard', standardEvent: 'lead_created', consentMode: 'gcm' });
+
+    assertThat(oaiqCalls[0]).isEqualTo(['consent', false]);
+    assertThat(listenerCount).isEqualTo(1);
+
+    listener('ad_storage', true);
+    assertThat(oaiqCalls[oaiqCalls.length - 1]).isEqualTo(['consent', true]);
+- name: Normalizes and hashes user data in init
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'standard',
+      standardEvent: 'lead_created',
+      userEmail: '  Jane.Doe@Example.COM ',
+      userPhone: '+1 (415) 555-2671',
+      userExternalId: ' Cust-001 ',
+      userFirstName: 'Mary Jane',
+      userLastName: "O'Connor",
+      userCountry: 'ca',
+      userCity: ' Edmonton ',
+      userRegion: 'Alberta',
+      userPostalCode: 'T5J 0N3'
+    });
+
+    assertApi('gtmOnSuccess').wasCalled();
+    assertThat(oaiqCalls[0]).isEqualTo(['init', {
+      pixelId: 'PXL',
+      user: {
+        email_sha256: 'hash(jane.doe@example.com)',
+        phone_number_sha256: 'hash(14155552671)',
+        external_id_sha256: 'hash(Cust-001)',
+        first_name_sha256: 'hash(maryjane)',
+        last_name_sha256: 'hash(oconnor)',
+        country: 'CA',
+        city: 'Edmonton',
+        region: 'Alberta',
+        postal_code: 'T5J 0N3'
+      }
+    }]);
+    // User data belongs on init only, never on the measure call.
+    assertThat(oaiqCalls[1][3]).isEqualTo({ type: 'customer_action' });
+- name: Passes pre-hashed user data through and skips invalid phones
+  code: |-
+    const oaiqCalls = [];
+    const windowState = {};
+    let injectCount = 0;
+
+    mock('copyFromWindow', function (key) { return windowState[key]; });
+    mock('createArgumentsQueue', function (fnName) {
+      if (windowState[fnName]) return windowState[fnName];
+      const fn = function () {
+        const args = [];
+        for (let i = 0; i < arguments.length; i++) args.push(arguments[i]);
+        oaiqCalls.push(args);
+      };
+      windowState[fnName] = fn;
+      return fn;
+    });
+    mock('injectScript', function (url, onSuccess, onFailure, cacheKey) {
+      injectCount++;
+      assertThat(url).isEqualTo('https://bzrcdn.openai.com/sdk/oaiq.min.js');
+      assertThat(cacheKey).isEqualTo('oaiq_sdk');
+      onSuccess();
+    });
+    mock('makeNumber', function (v) { return v * 1; });
+    mock('logToConsole', function () {});
+    mock('sha256', function (input, onSuccess, onFailure, options) {
+      onSuccess('hash(' + input + ')');
+    });
+
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'standard',
+      standardEvent: 'page_viewed',
+      userDataHashed: true,
+      userEmail: 'B4C9A289323B21A01C3E940F150EB9B8C542587F1ABFD8F0E1CC1FFC5E475514'
+    });
+    runCode({
+      pixelId: 'PXL',
+      eventType: 'standard',
+      standardEvent: 'page_viewed',
+      userPhone: '555-12'
+    });
+
+    assertThat(oaiqCalls[0][1].user).isEqualTo({
+      email_sha256: 'b4c9a289323b21a01c3e940f150eb9b8c542587f1abfd8f0e1cc1ffc5e475514'
+    });
+    assertThat(oaiqCalls[2]).isEqualTo(['init', { pixelId: 'PXL' }]);
 
 
 ___NOTES___
 
 ChatGPT Ads Pixel — GTM custom tag template.
 
-Mirrors the Meta Pixel template pattern: pick a Standard event from the dropdown
-or send a Custom event. The SDK is loaded once per page and init is called on
-every fire (idempotent), so you only need to create one tag per event — no
-separate init/page view tag required.
+Pick a Standard event from the dropdown or send a Custom event. The SDK is
+loaded once per page and init is called on every fire, so you only need one
+tag per event — no separate init/page view tag required.
 
-Reference: https://developers.openai.com/ads/measurement-pixel
+Events are sent with measureSingle so each tag only reports to its own Pixel
+ID, even when a page has more than one Pixel ID.
 
-Supported standard events (per OpenAI docs at time of writing):
-- page_viewed
-- contents_viewed
-- items_added
-- checkout_started
-- order_created
-- lead_created
-- registration_completed
-- appointment_scheduled
-- subscription_created
-- trial_started
+References:
+- https://developers.openai.com/ads/measurement-pixel
+- https://developers.openai.com/ads/supported-events
+- https://developers.openai.com/ads/multiple-pixels
 
-Data shapes:
-- contents — product or page views, carts, orders
-- customer_action — leads, registrations, appointments
-- plan_enrollment — subscriptions, trials (requires plan_id)
+Standard events and their data shapes (set automatically):
+- contents: page_viewed, contents_viewed, items_added, checkout_started, order_created
+- customer_action: lead_created, registration_completed, appointment_scheduled
+- plan_enrollment: subscription_created, trial_started
+- custom: any custom event
+
+app_installed and app_opened are Conversions API only and aren't offered.
 
 Amount and quantity values must be integers in the smallest currency unit
-(e.g. 2599 for $25.99 USD).
+(e.g. 2599 for $25.99 USD). An amount is only sent with a currency.
 
-Event ID is optional but recommended if you also fire the same conversion
-server-side — use the same ID on both sides to deduplicate.
+User data is normalized and SHA-256 hashed in the browser, then sent on init.
+
+Event ID is optional but recommended if you also send the same conversion
+through the Conversions API. Use the same ID on both sides to deduplicate.
 
 
